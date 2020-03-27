@@ -95,3 +95,58 @@ class MajorityVoteClassifier(BaseEstimator,ClassifierMixin):
         """
         if self.vote == 'probability':
             maj_vote = np.argmax(self.predict_proba(X),axis = 1) 
+        else:
+            #'classlabel vote
+            #colect results from clf.predict calls
+            predictions = np.asarray([clf.predict(X) for 
+                                      clf in self.classifiers_]).T
+            maj_vote = np.apply_along_axis(lambda x: np.argmax
+                                           (np.bincount(x,
+                                                        weights = self.weights)),
+                                           axis = 1,
+                                           arr = predictions)
+        maj_vote = self.lablenc_.inverse_transform(maj_vote)
+        return maj_vote
+        
+    def predict_proba(self, X):
+        """
+        Predict class probabilities for X
+
+
+        Parameters
+        ----------
+        X :{array-like, sparse matrix}
+        shape = [n_examples,n_features]
+        Training vectors, where 
+        n_examples is the number of examples and
+        n)features is the number of features
+            
+
+        Returns
+        -------
+        avg_prob: array-like,
+        shape = [n_example, n_classes]
+        weighted average probability for class per example
+
+        """
+        probas=np.asarray([clf.predict_proba(X)
+                           for clf in self.classifiers_])
+        avg_proba = np.average(probas,axis = 0,
+                               weights = self.weights)
+        return avg_proba
+    
+    def get_params(self, deep = True):
+        """
+        Get classifier parameter names for GridSearch
+
+        
+        """
+        if not deep:
+            return super(MajorityVoteClassifier,self).get_params(deep = False)
+        else:
+            out = self.named_classifiers.copy()
+            for name, step in self.named_classifiers.items():
+                for key,value in step.get_params(
+                        deep = True).items():
+                    out['%s__%s'%(name,key)] = value
+            return out
