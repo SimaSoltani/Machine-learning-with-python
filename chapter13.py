@@ -95,3 +95,110 @@ for i , elem in enumerate(ds_batch,1):
     print('batch {}:'.format(i),elem.numpy())
     
 # combining two tensors into a joint dataset
+tf.random.set_seed(1)
+t_x = tf.random.uniform([4,3],dtype=tf.float32)
+t_y = tf.range(4)
+
+ds_x = tf.data.Dataset.from_tensor_slices(t_x)
+ds_y = tf.data.Dataset.from_tensor_slices(t_y)
+ds_joint = tf.data.Dataset.zip((ds_x,ds_y))
+for example in ds_joint:
+    print(' x:', example[0].numpy(),
+          ' y:',example[1].numpy())
+    
+ds_joint = tf.data.Dataset.from_tensor_slices((t_x,t_y))
+for example in ds_joint:
+    print(' x:',example[0].numpy(),
+          ' y:', example[1].numpy())
+
+#scale feature to the range of [-1,1)
+ds_trans = ds_joint.map(lambda x,y: (x*2-1.0,y))
+for example in ds_trans:
+    print(' x:', example[0].numpy(),
+          ' y:', example[1].numpy())
+    
+#  shuffle, batch , and repeat
+tf.random.set_seed(1)
+ds = ds_joint.shuffle(buffer_size = len(t_x))
+for example in ds :
+    print(' x:',  example[0].numpy(),
+          ' y:', example[1].numpy())
+
+ds = ds_joint.batch(batch_size = 3,
+                    drop_remainder = False)
+batch_x,batch_y = next(iter(ds))
+print ('Batch-x:\n',batch_x.numpy())
+print('Batch-y:\n',batch_y.numpy())
+
+#repeat
+ds = ds_joint.batch(3).repeat(count = 2)
+for i ,(batch_x,batch_y) in enumerate(ds):
+    print(i,batch_x.shape,batch_y.numpy())
+    
+ds = ds_joint.repeat(count=2).batch(3)
+for i,(batch_x,batch_y) in enumerate(ds):
+    print(i,batch_x.shape,batch_y.numpy())
+    
+## oder 1: Shuffle -> batch-> order
+tf.random.set_seed(1)
+ds=ds_joint.shuffle(4).batch(2).repeat(3)
+for i,(batch_x,batch_y) in enumerate(ds):
+    print(i,batch_x.shape,batch_y.numpy())
+    
+##order 2 : batch-->shuffle--repeat
+tf.random.set_seed(1)
+ds=ds_joint.batch(2).shuffle(4).repeat(3)
+for i,(batch_x,batch_y) in enumerate(ds):
+    print(i,batch_x.shape,batch_y.numpy())
+    
+# create dataset from files on your locla storage disk
+import pathlib
+imgdir_path = pathlib.Path('data\cat_dog_images')
+file_list = sorted([str(path) for path in imgdir_path.glob('*.jpg')])
+
+import matplotlib.pyplot as plt
+import os
+
+fig = plt.figure(figsize=(10,5))
+for i,file in enumerate(file_list):
+    img_raw = tf.io.read_file(file)
+    img = tf.image.decode_image(img_raw)
+    print('Image shape:', img.shape)
+    ax = fig.add_subplot(2,3,i+1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(img)
+    ax.set_title(os.path.basename(file),size = 15)
+plt.tight_layout()
+plt.show()
+
+labels =[1 if 'dog' in os.path.basename(file) else 0 for file in file_list]
+print(labels)
+
+ds_files_labels = tf.data.Dataset.from_tensor_slices((file_list,labels))
+for item in ds_files_labels:
+    print(item[0].numpy(),item[1].numpy())
+    
+# function of preprocessing an image
+def load_and_preprocess(path,label):
+    image = tf.io.read_file(path)
+    image = tf.image.decode_jpeg(image,channels=3)
+    image = tf.image.resize(image, [img_height, img_width])
+    image /=255.0
+    return image,label
+
+img_height,img_width = 80,120
+ds_images_labels = ds_files_labels.map(load_and_preprocess)
+
+fig = plt.figure(figsize = (10,6))
+for i,example in enumerate(ds_images_labels):
+    ax=fig.add_subplot(2,3,i+1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(example[0])
+    ax.set_title('{}'.format(example[1].numpy()),
+                 size = 15)
+plt.tight_layout()
+plt.show()
+
+#fetching available datasets from the tensorflow_datasets libraray
