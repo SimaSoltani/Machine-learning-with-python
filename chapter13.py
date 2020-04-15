@@ -202,3 +202,43 @@ plt.tight_layout()
 plt.show()
 
 #fetching available datasets from the tensorflow_datasets libraray
+import tensorflow_datasets as tfds
+print(len(tfds.list_builders()))
+print(tfds.list_builders())
+
+# fetching dataset
+#first approach:
+    #1. calling the dataset builder function
+    #2. Executing the download_and_prepare() metod
+    #3. calling the as_dataset() method
+celeba_bldr = tfds.builder('celeb_a')
+print(celeba_bldr.info.features)
+print(celeba_bldr.info.features['image'])
+print(celeba_bldr.info.features['attributes'].keys())
+print(celeba_bldr.info.citation)
+
+celeba_bldr.download_and_prepare()
+datasets = celeba_bldr.as_dataset(shuffle_files=False)
+datasets.keys()
+
+ds_train = datasets['train']
+assert isinstance(ds_train,tf.data.Dataset)
+example = next(iter(ds_train))
+print(type(example))
+print(example.keys())
+
+ds_train = ds_train.map(lambda item:(item['image'],
+                                     tf.cast(item['attributes']['Male'],
+                                             tf.int32)))
+
+ds_train = ds_train.batch(18)
+images,labels = next(iter(ds_train))
+print(images.shape,labels)
+fig = plt.figure(figsize = (12,8))
+for  i ,(image,label) in enumerate (zip(images,labels)):
+    ax = fig.add_subplot(3,6,i+1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(image)
+    ax.set_title('{}'.format(label),size=15)
+plt.show()
