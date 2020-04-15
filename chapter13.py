@@ -333,7 +333,7 @@ X_test = np.linspace(0, 9, num = 100).reshape(-1,1)
 X_test_norm = (X_test - np.mean(X_train))/ np.std(X_train)
 y_pred = model(tf.cast(X_test_norm, dtype=tf.float32))
 
-fig = plt.figure(figsize(13,5))
+fig = plt.figure(figsize=(13,5))
 ax = fig.add_subplot(1,2,1)
 plt.plot(X_train_norm,y_train,'o',markersize=10)
 plt.plot(X_test_norm,y_pred,'--',lw=3)
@@ -349,3 +349,105 @@ ax.set_xlabel('Iteration', size=15)
 ax.set_ylabel('Value', size = 15)
 ax.tick_params(axis='both', which='major',labelsize=15)
 plt.show()
+
+# Model training via the .compile() and .fit()
+tf.random.set_seed(1)
+model = MyModel()
+model.compile(optimizer = 'sgd',
+              loss = loss_fn,
+              metrics=['mae','mse'])
+model.fit(X_train_norm,y_train,
+          epochs = num_epochs, batch_size = batch_size,
+          verbose=1)
+
+print ('Final Parameters: ', model.w.numpy(), model.b.numpy())
+
+X_test = np.linspace(0, 9, num = 100).reshape(-1,1)
+X_test_norm = (X_test - np.mean(X_train))/ np.std(X_train)
+y_pred = model(tf.cast(X_test_norm, dtype=tf.float32))
+
+fig = plt.figure(figsize=(13,5))
+ax = fig.add_subplot(1,2,1)
+plt.plot(X_train_norm,y_train,'o',markersize=10)
+plt.plot(X_test_norm,y_pred,'--',lw=3)
+plt.legend(['Training examples','Linear Reg.'],fontsize=15)
+ax.set_xlabel('x',size = 15)
+ax.set_ylabel('y', size=15)
+ax.tick_params(axis='both',which ='major',labelsize = 15)
+ax = fig.add_subplot(1,2,2)
+plt.plot(Ws, lw=3)
+plt.plot(bs, lw=3)
+plt.legend(['Weight w', 'Bias unit b'], fontsize = 15)
+ax.set_xlabel('Iteration', size=15)
+ax.set_ylabel('Value', size = 15)
+ax.tick_params(axis='both', which='major',labelsize=15)
+plt.show()
+
+# Building a multilayer perceptron for classifying flowers in the Iris dataset
+iris,iris_info = tfds.load('iris',with_info=True)
+print(iris_info)
+tf.random.set_seed(1)
+ds_orig=iris['train']
+ds_orig = ds_orig.shuffle(150,reshuffle_each_iteration=False)
+ds_train_orig=ds_orig.take(100)
+ds_test=ds_orig.skip(100)
+ds_train_orig = ds_train_orig.map(lambda x:(x['features'],x['label']))
+ds_test = ds_test.map(lambda x:(x['features'],x['label']))
+
+#create the NN using Keras
+iris_model = tf.keras.Sequential([
+    tf.keras.layers.Dense(16,activation='sigmoid',
+                          name='fc1', input_shape=(4,)),
+    tf.keras.layers.Dense(3, name='fc2',
+                          activation = 'softmax')])
+iris_model.summary()
+
+#compile this model to specify the loss function, the optimizer, and the metrics for evaluation
+iris_model.compile(optimizer='adam',
+                   loss='sparse_categorical_crossentropy',
+                   metrics=['accuracy'])
+#traing the model
+num_epochs=100
+training_size = 100
+batch_size = 2
+steps_per_epoch = np.ceil(training_size/batch_size)
+
+ds_train = ds_train_orig.shuffle(buffer_size=training_size)
+ds_train = ds_train.repeat()
+ds_train = ds_train.batch(batch_size=batch_size)
+ds_train = ds_train.prefetch(buffer_size=1000)
+
+history = iris_model.fit(ds_train, epochs=num_epochs,
+                         steps_per_epoch=steps_per_epoch,
+                         verbose=0)
+
+hist = history.history
+
+fig = plt.figure(figsize=(12,5))
+ax = fig.add_subplot(1,2,1)
+ax.plot(hist['loss'],lw=3)
+ax.set_title('Training loss', size = 15)
+ax.set_xlabel('Epoch', size=15)
+ax.tick_params(axis='both', which='major',labelsize=15)
+ax = fig.add_subplot(1,2,2)
+ax.plot(hist['accuracy'],lw=3)
+ax.set_title('Training accuracy', size = 15)
+ax.set_xlabel('Epoch', size = 15)
+ax.tick_params(axis='both',which='major',labelsize=15)
+plt.show()
+
+#evaluate on test dataset
+results = iris_model.evaluate(ds_test.batch(50),verbose=0)
+print('Test loss: {:.4f} Test Acc.: {:.4f}'.format(*results))
+
+# Saving and Reloading the trained model
+iris_model.save('iris-classifier.h5',
+                overwrite = True,
+                include_optimizer = True,
+                save_format='h5')
+
+#reload the model
+iris_model_new = tf.keras.models.load_model('iris-classifier.h5')
+iris_model_new.summary()
+results = iris_model_new.evaluate(ds_test.batch(33),verbose=0)
+print('Test loss: {:.4f} Test Acc.: {:.4f}'.format(*results))
