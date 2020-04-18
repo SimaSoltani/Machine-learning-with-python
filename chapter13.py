@@ -488,3 +488,52 @@ print('Net Input :\n', Z)
 print(' Output Units:\n', y_probas)
 y_class = np.argmax(Z, axis=0)
 print('Predictd class label: %d' %y_class)
+
+
+#code the softmax
+def softmax(z):
+    return np.exp(z)/np.sum(np.exp(z))
+
+y_probas = softmax(Z)
+print('Probabilities:\n', y_probas)
+np.sum(y_probas)
+
+import tensorflow as tf
+Z_tensor = tf.expand_dims(Z,axis=0) #convert z to tensor and additional dimention resrved for the batch size
+tf.keras.activations.softmax(Z_tensor)
+
+##hyperbolic Tangent
+# plot the activation functions
+import matplotlib .pyplot as plt
+def tanh(z):
+    e_p= np.exp(z)
+    e_m = np.exp(-z)
+    return (e_p - e_m)/(e_p +e_m)
+z = np.arange(-5,5,0.005)
+log_act = logistic(z)
+tanh_act = tanh(z)
+plt.ylim([-1.5,1.5])
+plt.xlabel('net input $z$')
+plt.ylabel('activation $\phi(z)$')
+plt.axhline(1,color = 'black',linestyle =':')
+plt.axhline(0.5, color='black',linestyle = ':')
+plt.axhline(0, color='black',linestyle = ':')
+plt.axhline(-0.5, color='black',linestyle = ':')
+plt.axhline(-1, color='black',linestyle = ':')
+plt.plot(z,tanh_act,linewidth=3,linestyle='--',label='tanh')
+plt.plot(z,log_act,linewidth=3,label='ligistic')
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()
+
+#using tensorflow activation hyperbolic tan
+np.tanh(z)
+tf.keras.activations.tanh(z)
+
+from scipy.special import expit #logistic function in scipy
+expit(z)
+
+tf.keras.activations.sigmoid(z)
+
+
+tf.keras.activations.relu(z)
