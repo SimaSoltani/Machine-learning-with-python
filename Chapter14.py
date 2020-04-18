@@ -54,3 +54,24 @@ def compute_z(a,b,c):
 tf.print('Scalar Inputs:', compute_z(1,2,3))
 tf.print('Rank 1 Inputes:',compute_z([1],[2],[3]))    
 tf.print('Rnak 2 Inputs:', compute_z([[1]],[[2]],[[3]]))
+
+
+@tf.function
+def compute_z(a,b,c):
+    r1=tf.subtract(a,b)
+    r2 = tf.multiply(2,r1)
+    z=tf.add(r1,r2)
+    return(z)
+
+tf.print('Scalar Inputs:', compute_z(1,2,3))
+@tf.function(input_signature=(tf.TensorSpec(shape=[None],
+                                            dtype=tf.int32),
+                              tf.TensorSpec(shape=[None],
+                                            dtype=tf.int32),
+                              tf.TensorSpec(shape=[None],
+                                            dtype=tf.int32),))
+df compute_z(a,b,c):
+    r1=tf.subtract(a,b)
+    r2=tf.multiply(2,r1)
+    z=tf.add(r2,c)
+    return z
