@@ -451,3 +451,40 @@ iris_model_new = tf.keras.models.load_model('iris-classifier.h5')
 iris_model_new.summary()
 results = iris_model_new.evaluate(ds_test.batch(33),verbose=0)
 print('Test loss: {:.4f} Test Acc.: {:.4f}'.format(*results))
+
+
+#logistic function recap
+import numpy as np
+
+X = np.array([1,1.4,2.5]) ## first value must be one
+w = np.array ([0.4,0.3,0.5])
+
+def net_input (X,w):
+    return np.dot (X,w)
+
+def logistic (z):
+    return 1.0/(1.0 +np.exp(-z))
+
+def logistic_activation(X,w):
+    z = net_input(X,w)
+    return logistic(z)
+
+print('P(y=1|x) = %.3f' %logistic_activation(X,w))
+    
+# w : array with shape=(n_output_units,n_hidden_units+1)
+# note that the first column are the bias units
+w = np.array([[1.1,1.2,0.8,0.4],
+             [0.2,0.4,1.0,0.2],
+             [0.6,1.5,1.2,0.7]])
+
+#A : data aray with shape = (n_hidden_units+1,n_samples)
+# note that the first column of this array must be 1
+A= np.array([[1,.1,.4,.6]])
+
+Z = np.dot(w,A[0])
+y_probas = logistic(Z)
+print('Net Input :\n', Z)
+
+print(' Output Units:\n', y_probas)
+y_class = np.argmax(Z, axis=0)
+print('Predictd class label: %d' %y_class)
