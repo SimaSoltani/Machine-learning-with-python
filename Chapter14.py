@@ -161,3 +161,99 @@ with tf.GradientTape() as tape:
     loss = tf.reduce_sum(tf.square(y-z))
 dloss_dx = tape.gradient(loss,x)
 tf.print('dL/dx:',dloss_dx)
+
+#keeping resources for multiple gradient computations
+with tf.GradientTape(persistent=True) as tape:
+    z = tf.add(tf.multiply(w,x),b)
+    loss= tf.reduce_sum(tf.square(y-z))
+dloss_dw = tape.gradient(loss,w)
+tf.print('dL/dw:',dloss_dw)
+dloss_db = tape.gradient(loss,b)
+tf.print('dL/db:',dloss_db)
+
+#define an optimizer to apply the model parameters
+optimizer = tf.keras.optimizers.SGD()
+optimizer.apply_gradients(zip([dloss_dw,dloss_db],[w,b]))
+tf.print('updated w:',w)
+tf.print('Updated b:',b)
+
+#Simplifying implementations of common architectures via Keras API
+
+#sample of a NN with two densly connected layers
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Dense(units=16,activation ='relu'))
+model.add(tf.keras.layers.Dense(units=32, activation ='relu'))
+##late bvariable creation
+model.build(input_shape=(None,4))
+model.summary()
+## printing variables of model
+for v in model.variables:
+    print('{:20s}'.format(v.name),v.trainable,v.shape)
+    
+# configure the layers by applying activation functions, variable initilizers
+# or regularization methods
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Dense(
+    units = 16,
+    activation = tf.keras.activations.relu,
+    kernel_initializer = tf.keras.initializers.glorot_uniform(),
+    bias_initializer = tf.keras.initializers.constant(2.0)
+    ))
+
+model.add(tf.keras.layers.Dense(
+    units = 32,
+    activation = tf.keras.activations.sigmoid,
+    kernel_regularizer = tf.keras.regularizers.l1
+    ))
+
+model.compile(
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.001),
+    loss=tf.keras.losses.BinaryCrossentropy(),
+    metrics = [tf.keras.metrics.Accuracy(),
+               tf.keras.metrics.Precision(),
+               tf.keras.metrics.Recall(),])
+
+# create a example dataset for XOR problem
+import numpy as np
+import matplotlib.pyplot as plt
+
+tf.random.set_seed(1)
+np.random.seed(1)
+
+x=np.random.uniform(low=-1,high=1,size=(200,2))
+y = np.ones(len(x))
+y[x[:,0]*x[:,1]<0]=0
+
+x_train = x[:100,:]
+y_train = y[:100]
+x_valid = x[100:,:]
+y_valid = y[100:]
+
+
+fig = plt.figure(figsize = (6,6))
+plt.plot(x[y==0,0],x[y==0,1],
+         'o',alpha = .75,markersize = 10)
+plt.plot(x[y==1,0],x[y==1,1],
+         '<',alpha=0.75,markersize = 10)
+plt.xlabel(r'$x_1$',size =15)
+plt.ylabel(r'$x_2$',size = 15)
+plt.show()
+
+# a simple model as a base line
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Dense(
+    units=1,
+    input_shape = (2,),
+    activation = 'sigmoid'))
+model.summary()
+
+model.compile (optimizer = tf.keras.optimizers.SGD(),
+               loss = tf.keras.losses.BinaryCrossentropy(),
+               metrics=[tf.keras.metrics.BinaryAccuracy()])
+hist = model.fit(x_train,y_train,
+                 validation_data = (x_valid,y_valid),
+                 epochs=200, batch_size = 2, verbose=0)
+
+from mlxtend.plotting import plot_decision_regions
+
+history = hist.history
