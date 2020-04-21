@@ -740,3 +740,16 @@ pred_res = regressor.predict(
 
 print(next(iter(pred_res)))
 
+#using pre-made boostedtreeregressor
+boosted_tree = tf.estimator.BoostedTreesRegressor(
+    feature_columns=all_feature_columns, n_batches_per_layer=20,
+    n_trees=200)
+
+boosted_tree.train(input_fn=lambda:train_input_fn(df_train_norm,
+                                                  batch_size=BATCH_SIZE))
+
+eval_results = boosted_tree.evaluate(input_fn=lambda:df_test_norm,
+                                     batch_size=BATCH_SIZE)
+
+print('Average-Loss: {:.4f}'.format(
+    eval_results['average_loss']))
