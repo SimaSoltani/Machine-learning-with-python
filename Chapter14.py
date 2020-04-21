@@ -805,3 +805,72 @@ dnn_classifier.train(input_fn=train_input_fn,steps=NUM_EPOCHS*step_per_epoch)
 eval_result = dnn_classifier.evaluate(input_fn = eval_input_fn)
 
 print(eval_result)    
+
+#Creating a cusom Estimator from an existing Keras model
+tf.random.set_seed(1)
+np.random.seed(1)
+
+##Create the data
+x = np.random.uniform(low = -1,high=1,size=(200,2))
+y = np.ones(len(x))
+y[x[:,0]*x[:,1]<0]=0
+
+
+x_train = x[:100,:]
+y_train = y[:100]
+x_valid = x[100:,:]
+y_valid = y[100:]
+
+## create the model using Sequential
+model = tf.keras.Sequential([
+    tf.keras.layers.Input(shape=(2,),name = 'Input_features'),
+    tf.keras.layers.Dense(units=4, activation ='relu'),
+    tf.keras.layers.Dense(units=4, activation = 'relu'),
+    tf.keras.layers.Dense(units=4, activation = 'relu'),
+    tf.keras.layers.Dense(units=1, activation ='sigmoid')
+    ])
+
+model.summary()
+
+##Step 1:  Define the input functions
+def train_input_fn(x_train,y_train,batch_size=8):
+    dataset=tf.data.Dataset.from_tensor_slices(
+        ({'Input_features':x_train},y_train.reshape(-1,1)))
+    
+    #shuffle, redpeat and batch the examples
+    return dataset.shuffle(100).repeat().batch(batch_size)
+
+def eval_input_fn(x_test,y_test=None,batch_size=8):
+    if y_test is None:
+        dataset = tf.data.Dataset.from_tensor_slices(
+            ({'Input_features':x_test}))
+    else:
+        dataset=tf.data.Dataset.from_tensor_slices(
+            ({'Input_features':x_test},y_test.reshape(-1,1)))
+    
+    return dataset.batch(batch_size)
+
+#step 2: Define the feature columns
+features =[ tf.feature_column.numeric_column(
+    key = 'Input_features:',shape=(2,)
+    )]
+
+#Step3: Convert the model to and estimator using tf.keras.estimator.model_to_estimator
+# Before converting we need to compile the model
+model.compile(optimizer=tf.keras.optimizers.SGD(),
+              loss = tf.keras.losses.BinaryCrossentropy(),
+              metrics = [tf.keras.metrics.BinaryAccuracy()])
+
+my_estimator = tf.keras.estimator.model_to_estimator(
+    keras_model=model,
+    model_dir = 'models/estimator_for_XOR/')
+
+#Step4: Use the estimator
+num_epochs=200
+batch_size = 2
+step_per_epoch=np.ceil(len(x_train)/batch_size)
+
+my_estimator.train(input_fn=lambda:train_input_fn(x_train,y_train,batch_size),
+                   steps = num_epochs*step_per_epoch)
+
+my_estimator.evaluate(input_fn=lambda:eval_input_fn(x_valid,y_valid,batch_size))
