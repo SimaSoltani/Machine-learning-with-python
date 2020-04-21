@@ -748,8 +748,60 @@ boosted_tree = tf.estimator.BoostedTreesRegressor(
 boosted_tree.train(input_fn=lambda:train_input_fn(df_train_norm,
                                                   batch_size=BATCH_SIZE))
 
-eval_results = boosted_tree.evaluate(input_fn=lambda:df_test_norm,
-                                     batch_size=BATCH_SIZE)
+eval_results = boosted_tree.evaluate(input_fn=lambda:eval_input_fn(df_test_norm,
+                                     batch_size=BATCH_SIZE))
 
 print('Average-Loss: {:.4f}'.format(
     eval_results['average_loss']))
+
+#Using Estimators for MNIST handwritten digit classification
+import tensorflow_datasets as tfds
+import tensorflow as tf
+import numpy as np
+
+BUFFER_SIZE =10000
+BATCH_SIZE = 64
+NUM_EPOCHS = 20
+step_per_epoch = np.ceil(60000/BATCH_SIZE)
+
+def preprocess(item):
+    image = item['image']
+    label = item['label']
+    image = tf.image.convert_image_dtype(image,tf.float32)
+    image = tf.reshape(image,(-1,))
+    
+    return{'image-pixels':image},label[...,tf.newaxis]
+
+
+#Step 1: Define two input functions ( one for training and one for evaluation)
+def train_input_fn():
+    datasets= tfds.load(name = 'mnist')
+    mnist_train = datasets['train']
+    
+    dataset = mnist_train.map(preprocess)
+    dataset = dataset.shuffle(BUFFER_SIZE)
+    dataset = dataset.batch(BATCH_SIZE)
+    return dataset.repeat()
+
+def eval_input_fn():
+    datasets = tfds.load(name ='mnist')
+    mnist_test = datasets['test']
+    dataset = mnist_test.map(preprocess).batch(BATCH_SIZE)
+    return dataset
+
+#Step 2: Define feature columns
+image_feature_column = tf.feature_column.numeric_column(
+    key ='image-pixels',shape = (28*28))
+
+#Step3: Instantiate the estimator
+dnn_classifier = tf.estimator.DNNClassifier(hidden_units=[32,16],
+                                            feature_columns=[image_feature_column],
+                                            n_classes=10,
+                                            model_dir = 'models/mnist-dnn/')
+
+#Step4: train and evaluates
+dnn_classifier.train(input_fn=train_input_fn,steps=NUM_EPOCHS*step_per_epoch)
+
+eval_result = dnn_classifier.evaluate(input_fn = eval_input_fn)
+
+print(eval_result)    
