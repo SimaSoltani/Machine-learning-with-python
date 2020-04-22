@@ -233,5 +233,123 @@ plt.show()
 test_results = model.evaluate(mnist_test.batch(20))
 print('Test Acc.: {:.2f}\%'.format(test_results[1]*100))
 
-from tensorflow.keras import backend
-print(backend.tensorflow_backend._get_available_gpus())
+batch_test = next(iter(mnist_test.batch(12)))
+preds = model(batch_test[0])
+tf.print(preds.shape)
+
+preds=tf.argmax(preds,axis=1)
+print(preds)
+
+fig = plt.figure(figsize=(12,4))
+for i in range(12):
+    ax = fig.add_subplot(2,6,i+1)
+    ax.set_xticks([]);ax.set_yticks([])
+    img = batch_test[0][i,:,:,0]
+    ax.imshow(img,cmap='gray_r')
+    ax.text(0.9,0.1,'{}'.format(preds[i]),
+            size=15, color='blue',
+            horizontalalignment='center',
+            verticalalignment='center',
+            transform=ax.transAxes)
+plt.show()
+
+# Gender classification from face images using CNN
+import tensorflow as tf
+import tensorflow_datasets as tfds
+celeba_bldr =tfds.builder('celeb_a')
+celeba_bldr.download_and_prepare()
+celeba = celeba_bldr.as_dataset(shuffle_files=False)
+
+celeba_train = celeba['train']
+celeba_valid = celeba['validation']
+celeba_test = celeba['test']
+
+def count_items(ds):
+    n=0
+    for _ in ds:
+        n+=1
+    return n
+
+print('Train set: {}'.format(count_items(celeba_train)))
+print('Validation: {}'.format(count_items(celeba_valid)))
+print('Test set: {}'.format(count_items(celeba_test)))
+
+celeba_train = celeba_train.take(16000)
+celeba_valid = celeba_valid.take(1000)
+print('Train set: {}'.format(count_items(celeba_train)))
+print('Validation:{}'.format(count_items(celeba_valid)))
+
+
+#Augmentation of the data
+import matplotlib.pyplot as plt
+#take 5 examples
+examples=[]
+for example in celeba_train.take(5):
+    examples.append(example['image'])
+    
+fig = plt.figure(figsize=(16,8.5))
+
+## column 1: cropping to a bounding-box
+ax = fig.add_subplot(2,5,1)
+ax.set_title('Crop to \nnbounting-box',size=15)
+
+ax.imshow(examples[0])
+ax=fig.add_subplot(2,5,6) 
+img_cropped = tf.image.crop_to_bounding_box(
+    examples[0],50,20,128,128)
+ax.imshow(img_cropped)  
+# columns2 : flipping (horizontally) 
+ax=fig.add_subplot(2,5,2)
+ax.set_title('Flip (horizontal)',size=15)
+
+ax.imshow(examples[1])
+ax=fig.add_subplot(2,5,7) 
+img_flipped = tf.image.flip_left_right(
+    examples[1])
+ax.imshow(img_flipped)  
+
+# columns3 : adjust contrast 
+ax=fig.add_subplot(2,5,3)
+ax.set_title('Adjust contrast',size=15)
+
+ax.imshow(examples[2])
+ax=fig.add_subplot(2,5,8) 
+img_adj_contrast = tf.image.adjust_contrast(
+    examples[2],contrast_factor=2)
+ax.imshow(img_adj_contrast) 
+
+# columns4 : adjust brightness
+ax=fig.add_subplot(2,5,4)
+ax.set_title('adjust brightness',size=15)
+
+ax.imshow(examples[3])
+ax=fig.add_subplot(2,5,9) 
+img_adj_brightness = tf.image.adjust_brightness(
+    examples[3],delta=0.3)
+ax.imshow(img_adj_brightness)
+
+# columns5 : cropping from image center 
+ax=fig.add_subplot(2,5,5)
+ax.set_title('Central crop\nand resize',size=15)
+
+ax.imshow(examples[4])
+ax=fig.add_subplot(2,5,10) 
+img_center_crop = tf.image.central_crop(
+    examples[4],.7)
+img_resized = tf.image.resize(
+    img_center_crop,size=(218,178))
+ax.imshow(img_resized.numpy().astype('uint8'))
+
+plt.show()     
+
+#Random augmentation
+tf.random.set_seed(1)
+fig = plt.figure(figsize=(14,12))
+
+for i,example in enumerate(celeba_train.take(3)):
+    image=example['image']
+    
+    ax=fig.add_subplot(3,4,i*4+1)
+    ax.imshow(image)
+    if i == 0:
+        ax.set_title('Orig',size=15)
