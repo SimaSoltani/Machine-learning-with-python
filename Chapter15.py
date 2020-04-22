@@ -56,3 +56,78 @@ W = [[1,0,3],[1,2,1],[0,1,1]]
 print('Con2d Implementation :\n', conv2d(X,W,p=(1,1),s=(1,1)))
 
 print('Scipy conv2d results:\n',scipy.signal.convolve2d(X,W,mode='same'))
+
+
+#Reading an image
+import tensorflow as tf
+
+img_raw = tf.io.read_file('data/example-image.png')
+img = tf.image.decode_image(img_raw)
+print('Image shape :',img.shape)
+
+#reading image into our python session using imageio package
+import imageio
+img = imageio.imread('data/example-image.png')
+print('Image shape:',img.shape)
+print('Number of channels:', img.shape[2])
+print('Image data type: ',img.dtype)
+print(img[100:102,100:102,:])
+
+# try to plot the image
+import matplotlib.pyplot as plt
+
+plt.imshow(img)
+
+
+# using L2 as regularization in NN
+from tensorflow import keras
+
+conv_layer = keras.layers.Conv2D(
+    filters = 16,
+    kernel_size=(3,3),
+    kernel_regularizer = keras.regularizers.l2(0.001))
+
+fc_layer = keras.layers.Dense(
+    units = 16,
+    kernel_regularizer=keras.regularizers.l2(0.001))
+
+
+
+#use of cross enthropy loss functions
+import tensorflow_datasets as tfds
+
+####### Binary Crossentropy
+bce_probabs = tf.keras.losses.BinaryCrossentropy(from_logits = False)
+bce_logits = tf.keras.losses.BinaryCrossentropy(from_logits = True)
+
+logits = tf.constant([0.8])
+probabs = tf.keras.activations.sigmoid(logits)
+
+tf.print(
+    'BCE ( w probabs): {:.4f}'.format(
+        bce_probabs(y_true=[1],y_pred=probabs)),
+    '(w logits): {:.4f}'.format(
+        bce_logits(y_true=[1],y_pred=logits)))
+
+######## Categorical CrossEntropy
+cce_probas = tf.keras.losses.CategoricalCrossentropy(from_logits=False)
+cce_logits = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+
+logits = tf.constant([[1.5,0.8,2.1]])
+probas = tf.keras.activations.softmax(logits)
+
+tf.print('CCE (w probas):{:.4f}'.format(
+    cce_probas(y_true=[0,0,1],y_pred=probas)),
+    'CCE (w logits):{:.4f}'.format(
+        cce_logits(y_true=[0,0,1],y_pred=logits)))
+
+######## Sparse Categorical CrossEntropy
+sp_cce_probas = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+sp_cce_logits = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+
+tf.print(
+    'Sp CCE ( w probabs): {:.4f}'.format(
+        sp_cce_probas(y_true=[2],y_pred=probas)),
+    '(w logits): {:.4f}'.format(
+        sp_cce_logits(y_true=[2],y_pred=logits)))
