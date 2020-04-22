@@ -131,3 +131,35 @@ tf.print(
         sp_cce_probas(y_true=[2],y_pred=probas)),
     '(w logits): {:.4f}'.format(
         sp_cce_logits(y_true=[2],y_pred=logits)))
+
+####### Implementing a deep CNN using Tensorflow
+
+#loading and preprocessing the data
+## 3 step loading method:
+    
+import tensorflow_datasets as tfds
+mnist_bldr = tfds.builder('mnist')
+mnist_bldr.download_and_prepare()
+datasets = mnist_bldr.as_dataset(shuffle_files=False)
+mnist_train_orig = datasets['train']
+mnist_test_orig = datasets['test']
+
+## split the train/validation datasets 
+BUFFER_SIZE = 10000
+BATCH_SIZE = 64
+NUM_EPOCHS = 20
+
+mnist_train = mnist_train_orig.map(
+    lambda item: (tf.cast(item['image'],tf.float32)/255.0,
+                  tf.cast(item['label'],tf.int32)))
+
+mnist_test = mnist_test_orig.map(
+    lambda item: (tf.cast(item['image'],tf.float32)/255.0,
+                  tf.cast(item['label'],tf.int32)))
+
+tf.random.set_seed(1)
+mnist_train = mnist_train.shuffle(buffer_size=BUFFER_SIZE,
+                                  reshuffle_each_iteration = False)
+
+mnist_valid = mnist_train.take(10000).batch(BATCH_SIZE)
+mnist_train = mnist_train.skip(10000).batch(BATCH_SIZE)
