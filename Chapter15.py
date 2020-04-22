@@ -136,7 +136,7 @@ tf.print(
 
 #loading and preprocessing the data
 ## 3 step loading method:
-    
+import tensorflow as tf   
 import tensorflow_datasets as tfds
 mnist_bldr = tfds.builder('mnist')
 mnist_bldr.download_and_prepare()
@@ -163,3 +163,75 @@ mnist_train = mnist_train.shuffle(buffer_size=BUFFER_SIZE,
 
 mnist_valid = mnist_train.take(10000).batch(BATCH_SIZE)
 mnist_train = mnist_train.skip(10000).batch(BATCH_SIZE)
+
+
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Conv2D(
+    filters =32,
+    kernel_size=(5,5),
+    strides=(1,1), padding = 'same',
+    data_format='channels_last',
+    name='conv_1', activation='relu'))
+model.add(tf.keras.layers.MaxPool2D(
+    pool_size=(2,2),name ='pool_1'))
+model.add(tf.keras.layers.Conv2D(
+    filters=64,
+    kernel_size=(5,5),
+    strides=(1,1),padding='same',
+    name='conv_2',activation='relu'))
+model.add(tf.keras.layers.MaxPool2D(
+    pool_size=(2,2),name='pool_2'))
+
+model.compute_output_shape(input_shape=(16,28,28,1))
+
+##flatten the output to be able to use it in the Dense layer input
+model.add(tf.keras.layers.Flatten())
+model.compute_output_shape(input_shape=(16,28,28,1))
+
+##add two dense with a dropout layer in between
+model.add(tf.keras.layers.Dense(
+    units=1024,name='fc_1',
+    activation='relu'))
+
+model.add(tf.keras.layers.Dropout(rate=0.5))
+
+model.add(tf.keras.layers.Dense(
+    units=10, name='fc_2',
+    activation='softmax'))
+
+model.compute_output_shape(input_shape=(None,28,28,1))
+
+tf.random.set_seed(1)
+model.build(input_shape=(None,28,28,1))
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(),
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+    metrics=['accuracy'])
+
+history = model.fit(mnist_train,
+                    epochs=NUM_EPOCHS,
+                    validation_data=mnist_valid,
+                    shuffle=True)
+
+
+#visualize the learning curve
+import matplotlib.pyplot as plt
+import numpy as np
+hist=history.history
+x_arr = np.arange(len(hist['loss']))+1
+fig = plt.figure(figsize=(12,4))
+ax = fig.add_subplot(1,2,1)
+ax.plot(x_arr,hist['loss'],'-o',label='Train loss')
+ax.plot(x_arr,hist['val_loss'],'--', label='Validation loss')
+ax.legend(fontsize=15)
+ax=fig.add_subplot(1,2,2)
+ax.plot(x_arr,hist['accuracy'],'-o',label=' Training Acc.')
+ax.plot(x_arr,hist['val_accuracy'],'--',label=' Validation Acc.')
+ax.legend(fontsize=15)
+plt.show()
+
+test_results = model.evaluate(mnist_test.batch(20))
+print('Test Acc.: {:.2f}\%'.format(test_results[1]*100))
+
+from tensorflow.keras import backend
+print(backend.tensorflow_backend._get_available_gpus())
