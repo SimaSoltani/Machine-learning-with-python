@@ -353,3 +353,22 @@ for i,example in enumerate(celeba_train.take(3)):
     ax.imshow(image)
     if i == 0:
         ax.set_title('Orig',size=15)
+        
+    ax=fig.add_subplot(3,4, i*4+2)
+    img_crop = tf.image.random_crop(image,size=(178,178,3))
+    ax.imshow(img_crop)
+    if i ==0:
+        ax.set_title('Step1: Random Crop',size=15)
+    
+    ax=fig.add_subplot(3,4,i*4+3)
+    img_flip = tf.image.random_flip_left_right(img_crop)
+    ax.imshow(tf.cast(img_flip,tf.uint8))
+    if i==0:
+        ax.set_title('Step2 : Random flip',size=15)
+    
+    ax=fig.add_subplot(3,4,i*4+4)
+    img_resize = tf.image.resize(img_flip,size=(128,128))
+    ax.imshow(tf.cast(img_resize,tf.uint8))
+    if i==0:
+        ax.set_title('Step3: resize',size=15)
+plt.show()
