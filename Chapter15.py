@@ -372,3 +372,197 @@ for i,example in enumerate(celeba_train.take(3)):
     if i==0:
         ax.set_title('Step3: resize',size=15)
 plt.show()
+
+#Define a wriapper function to use the pipeline for 
+#data augmentation during model training
+def preprocess(example,size=(64,64),mode='train'):
+    """
+    This function recieves a dictionary containing the keys 'image' and
+    'attributes' and return a tuple containing the transformed image 
+    and label extracted from dictionary of attributes.
+
+    Parameters
+    ----------
+    example : type: dictionary of 'image' and 'attribute'
+        the dictionary of image and attributes.
+    size : type:tuple, shape(dim1,dim2)
+        the features of the data example. The default is (64,64).
+    mode : string
+        
+
+    Returns
+    -------
+    Tuple containing the transformed image and the label extracted from '
+    dictionary of attributes.
+
+    """
+    image = example['image']
+    label = example['attributes']['Male']
+    if mode =='train':
+        image_cropped = tf.image.random_crop(
+            image,size=(178,178,3))
+        image_resize = tf.image.resize(
+            image_cropped,size=size)
+        image_flip = tf.image.random_flip_left_right(
+            image_resize)
+        return image_flip/255.,tf.cast(label,tf.int32)
+    else: #use center - insted of random crops for non training data
+        image_cropped = tf.image.crop_to_bounding_box(
+            image,offset_height = 20, offset_width =0,
+            target_height = 178, target_width=178)
+        image_resize = tf.image.resize(image_cropped,size=size)
+    return image_resize/255.,tf.cast(label,tf.int32)       
+
+tf.random.set_seed(1)
+ds = celeba_train.shuffle(1000,reshuffle_each_iteration=False)
+ds = ds.take(2).repeat(5)
+ds = ds.map(lambda x:preprocess(x,size=(178,178),mode = 'train'))
+
+fig = plt.figure(figsize=(15,6))
+for j, example in enumerate(ds):
+    ax = fig.add_subplot(2,5,j//2+(j%2)*5+1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(example[0])
+plt.show()
+
+import numpy as np
+
+BATCH_SIZE=32
+BUFFER_SIZE = 1000
+IMAGE_SIZE=(64,64)
+step_per_epoch = np.ceil(16000/BATCH_SIZE)
+
+ds_train = celeba_train.map(
+    lambda x:preprocess(x,size=IMAGE_SIZE,mode='train'))
+
+ds_train = ds_train.shuffle(buffer_size=BUFFER_SIZE).repeat()
+ds_train = ds_train.batch(BATCH_SIZE)
+
+ds_valid = celeba_valid.map(
+    lambda x:preprocess(x,size=IMAGE_SIZE,mode='eval'))
+ds_valid=ds_valid.batch(BATCH_SIZE)
+
+#training a CNN gender classifier
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32,(3,3),padding='same',activation='relu'),
+    tf.keras.layers.MaxPool2D((2,2)),
+    tf.keras.layers.Dropout(rate=0.5),
+    
+    tf.keras.layers.Conv2D(
+        64,(3,3),padding='same',activation='relu'),
+    tf.keras.layers.MaxPool2D((2,2)),
+    tf.keras.layers.Dropout(rate=0.5),
+    
+    
+    tf.keras.layers.Conv2D(
+        128,(3,3),padding='same',activation='relu'),
+    tf.keras.layers.MaxPool2D((2,2)),
+    
+    
+    tf.keras.layers.Conv2D(
+        256,(3,3),padding='same',activation='relu')
+    ])
+
+model.compute_output_shape(input_shape=(None,64,64,3))
+
+# add a global_average pooling layer
+model.add(tf.keras.layers.GlobalAveragePooling2D())
+model.compute_output_shape(input_shape=(None,64,64,3))
+
+model.add(tf.keras.layers.Dense(
+    units=1,activation=None))
+
+model.compute_output_shape(input_shape=(None,64,64,3))
+model.build(input_shape=(None,64,64,3))
+model.summary()
+
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(),
+    loss = tf.keras.losses.BinaryCrossentropy(from_logits=True),
+    metrics=['accuracy'])
+
+history = model.fit(ds_train,validation_data=ds_valid,
+                    epochs=20,
+                    steps_per_epoch=step_per_epoch)
+
+
+hist= history.history
+x_arr = np.arange(len(hist['loss']))+1
+fig = plt.figure(figsize=(12,4))
+ax=fig.add_subplot(1,2,1)
+ax.plot(x_arr,hist['loss'],'-o',label ='Training Loss')
+ax.plot(x_arr,hist['val_loss'],'-->',label=' Validation Loss')
+ax.legend(fontsize=15)
+ax.set_xlabel('Epoch',size=15)
+ax.set_ylabel('Loss',size=15)
+ax=fig.add_subplot(1,2,2)
+ax.plot(x_arr,hist['accuracy'],'-o',label='Training Acc.')
+ax.plot(x_arr,hist['val_accuracy'],'-->',label=' Validation Acc.')
+ax.legend(fontsize=15)
+ax.set_xlabel('Epoch',size= 15)
+ax.set_ylabel('Accuracy',size = 15)
+plt.show()
+
+
+# using fit function we can continue training for 10 more epochs
+history = model.fit(ds_train,validation_data=ds_valid,
+                    epochs=30,initial_epoch=20,
+                    steps_per_epoch=step_per_epoch)
+
+hist.update(history.history)
+x_arr = np.arange(len(hist['loss']))+1
+fig = plt.figure(figsize=(12,4))
+ax=fig.add_subplot(1,2,1)
+ax.plot(x_arr,hist['loss'],'-o',label ='Training Loss')
+ax.plot(x_arr,hist['val_loss'],'-->',label=' Validation Loss')
+ax.legend(fontsize=15)
+ax.set_xlabel('Epoch',size=15)
+ax.set_ylabel('Loss',size=15)
+ax=fig.add_subplot(1,2,2)
+ax.plot(x_arr,hist['accuracy'],'-o',label='Training Acc.')
+ax.plot(x_arr,hist['val_accuracy'],'-->',label=' Validation Acc.')
+ax.legend(fontsize=15)
+ax.set_xlabel('Epoch',size= 15)
+ax.set_ylabel('Accuracy',size = 15)
+plt.show()
+
+# Evaluate the model with the test set
+ds_test  = celeba_test.map(
+    lambda x:preprocess(x,size=IMAGE_SIZE,mode='test')).batch(32)
+test_results = model.evaluate(ds_test)
+print(' Test accuracy: {:.2f}%'.format(test_results[1]*100))
+
+#visualize 10 test examples
+ds = ds_test.unbatch().take(10)
+
+pred_logits = model.predict(ds.batch(10))
+probas = tf.sigmoid(pred_logits)
+probas = probas.numpy().flatten()*100
+
+fig = plt.figure(figsize = (15,9))
+for j,example in enumerate(ds):
+    ax = fig.add_subplot(2,5,j+1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(example[0])
+    if example[1].numpy()==1:
+        label='M'
+    else:
+        label='F'
+    ax.text(0.5,-0.15,'GT: {:s}\nPr (Male)={:.0f}%'
+            ''.format(label,probas[j]),
+            size=16,
+            horizontalalignment='center',
+            verticalalignment='center',
+            transform=ax.transAxes)
+plt.tight_layout()
+plt.show()
+
+
+
+#train the model with the whole dataset
+celeba_train = celeba['train']
+celeba_valid = celeba['validation']
+celeba_test = celeba['test']
