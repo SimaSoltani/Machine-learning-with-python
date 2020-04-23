@@ -166,3 +166,37 @@ model.add(SimpleRNN(32))
 
 model.add(Dense(1))
 
+model.summary()
+
+# Building an RNN model for the sentiment analysis task
+embedding_dim = 20
+vocab_size = len(token_counts)+2
+
+tf.random.set_seed(1)
+
+##build the model
+bi_lstm_model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(
+        input_dim=vocab_size,
+        output_dim=embedding_dim,
+        name='embed-layer'),
+    tf.keras.layers.Bidirectional(
+        tf.keras.layers.LSTM(64,name='lstm-layer'),
+        name='bidir-lstm'),
+    tf.keras.layers.Dense(64,activation='relu'),
+    tf.keras.layers.Dense(1,activation='sigmoid')
+    ])
+
+bi_lstm_model.summary()
+
+#compile and train
+bi_lstm_model.compile(
+    optimizer = tf.keras.optimizers.Adam(1e-3),
+    loss= tf.keras.losses.BinaryCrossentropy(from_logits=False),
+    metrics=['accuracy'])
+
+history = bi_lstm_model.fit(train_data,validation_data=valid_data,epochs=10)
+
+
+#evaluation
+test_results = bi_lstm_model.evaluate(test_data)
