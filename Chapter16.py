@@ -138,3 +138,31 @@ test_data = ds_test.padded_batch(
 valid_data = ds_valid.padded_batch(
     32,padded_shapes=([-1],[]))
 
+
+from tensorflow.keras.layers import Embedding
+model = tf.keras.Sequential()
+
+model.add(Embedding(input_dim=100,
+                    output_dim=6,
+                    input_length=20,
+                    name='embed-layer'))
+model.summary()
+
+# example of an RNN model
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.layers import SimpleRNN
+from tensorflow.keras.layers import Dense
+
+model = Sequential()
+model.add(Embedding(
+    input_dim = 1000,
+    output_dim = 32))
+
+model.add(SimpleRNN(
+    32,return_sequences=True))
+
+model.add(SimpleRNN(32))
+
+model.add(Dense(1))
+
