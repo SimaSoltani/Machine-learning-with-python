@@ -200,3 +200,5 @@ history = bi_lstm_model.fit(train_data,validation_data=valid_data,epochs=10)
 
 #evaluation
 test_results = bi_lstm_model.evaluate(test_data)
+
+
